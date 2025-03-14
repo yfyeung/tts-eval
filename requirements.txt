@@ -1,0 +1,6 @@
+editdistance
+torch>=2.0
+torchaudio>=2.0
+transformers
+soundfile
+omegaconf
