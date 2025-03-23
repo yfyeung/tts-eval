@@ -22,7 +22,7 @@ class WhisperASRModel(ASRModel):
 
     def transcribe(self, audio: torch.Tensor) -> str:
         return self.model.transcribe(
-            audio.squeeze(0), language=self.language, beam_size=5
+            audio.squeeze(0), language=self.language, beam_size=1
         )["text"]
 
     def text_normalize(self, text: str) -> str:
