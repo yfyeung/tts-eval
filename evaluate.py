@@ -15,7 +15,7 @@
 """
 Usage:
 
-./bin/evalute.py \
+./evalute.py \
     --input-dir /path/to/samples \
     --metrics "asr, asv, mos" \
     --asr-model "hubert" \
@@ -144,13 +144,13 @@ def main(args):
 
     for audio_file in audio_files:
         audio_id = audio_file.stem
-        audio, sr = torchaudio.load(audio_file)
+        audio, sr = torchaudio.load(str(audio_file))
         audio = torchaudio.transforms.Resample(sr, 16000)(audio)
 
         prompt_audio_file = (
             audio_file.parent / f"{audio_file.stem}-prompt{audio_file.suffix}"
         )
-        prompt_audio, sr = torchaudio.load(prompt_audio_file)
+        prompt_audio, sr = torchaudio.load(str(prompt_audio_file))
         prompt_audio = torchaudio.transforms.Resample(sr, 16000)(prompt_audio)
 
         text_file = audio_file.parent / f"{audio_file.stem}.txt"
@@ -175,7 +175,7 @@ def main(args):
             logging.info(f"SIM: {sim}")
 
         if "mos" in args.metrics:
-            mos = mos_model.predict_mos(audio)
+            mos = mos_model.predict_mos(audio_file)
             results[audio_id]["mos"] = mos
             logging.info(f"MOS: {mos}")
 
