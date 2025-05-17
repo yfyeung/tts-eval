@@ -17,9 +17,10 @@ Usage:
 
 ./bin/evalute.py \
     --input-dir /path/to/samples \
-    --metrics "asr, asv" \
+    --metrics "asr, asv, mos" \
     --asr-model "hubert" \
-    --asv-model "wavlm_ecapa_tdnn"
+    --asv-model "wavlm_ecapa_tdnn" \
+    --mos-model "utmosv2"
 
 """
 import argparse
@@ -43,8 +44,8 @@ def get_args():
     parser.add_argument(
         "--metrics",
         type=str,
-        default="asr, asv",
-        help="Comma-separated list of evaluation metrics (asr, asv).",
+        default="asr, asv, mos",
+        help="Comma-separated list of evaluation metrics.",
     )
 
     parser.add_argument(
@@ -61,6 +62,14 @@ def get_args():
         choices=["wavlm_ecapa_tdnn"],
         default="wavlm_ecapa_tdnn",
         help="Choose which ASV model to use.",
+    )
+
+    parser.add_argument(
+        "--mos-model",
+        type=str,
+        choices=["utmosv2"],
+        default="utmosv2",
+        help="Choose which MOS prediction model to use.",
     )
 
     return parser.parse_args()
@@ -91,6 +100,16 @@ def get_asv_model(model_name, device):
         raise ValueError(f"Unsupported ASV model: {model_name}")
 
 
+def get_mos_model(model_name, device):
+    if model_name == "utmosv2":
+        from mos_prediction.utmosv2 import UTMOSv2Model
+
+        return UTMOSv2Model(device=device)
+
+    else:
+        raise ValueError(f"Unsupported MOS predition model: {model_name}")
+
+
 @torch.no_grad()
 def main(args):
     device = torch.device("cpu")
@@ -107,7 +126,13 @@ def main(args):
     if "asv" in args.metrics:
         asv_model = get_asv_model(args.asv_model, device)
 
+    # Setup MOS prediction model
+    mos_model = None
+    if "mos" in args.metrics:
+        mos_model = get_mos_model(args.mos_model, device)
+
     results = defaultdict(dict)
+
     audio_files = sorted(
         [
             f
@@ -149,6 +174,11 @@ def main(args):
             results[audio_id]["sim"] = sim
             logging.info(f"SIM: {sim}")
 
+        if "mos" in args.metrics:
+            mos = mos_model.predict_mos(audio)
+            results[audio_id]["mos"] = mos
+            logging.info(f"MOS: {mos}")
+
     if "asr" in args.metrics:
         overall_wer = sum(sample["error"] for sample in results.values()) / sum(
             sample["total"] for sample in results.values()
@@ -160,6 +190,12 @@ def main(args):
             results.values()
         )
         logging.info(f"Overall SIM: {overall_sim}")
+
+    if "mos" in args.metrics:
+        overall_mos = sum(sample["mos"] for sample in results.values()) / len(
+            results.values()
+        )
+        logging.info(f"Overall MOS: {overall_mos}")
 
 
 torch.set_num_threads(1)
